@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>惩罚转盘</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #08080f;
+      background-image:
+        radial-gradient(ellipse at 50% 5%, rgba(80, 20, 180, 0.2) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 85%, rgba(0, 150, 255, 0.08) 0%, transparent 50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Noto Sans SC', 'Orbitron', sans-serif;
+      padding: 24px 16px 40px;
+      gap: 20px;
+      position: relative;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0, 0, 0, 0.06) 2px, rgba(0, 0, 0, 0.06) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(18px, 4vw, 36px);
+      font-weight: 900;
+      text-align: center;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      color: #00d8ff;
+      text-shadow:
+        0 0 8px #00d8ff, 0 0 20px #00d8ff,
+        0 0 40px rgba(0, 200, 255, 0.45),
+        0 0 80px rgba(0, 200, 255, 0.25);
+      animation: titleBreath 3s ease-in-out infinite alternate;
+      margin-top: 12px;
+      flex-shrink: 0;
+    }
+    @keyframes titleBreath {
+      from { text-shadow: 0 0 8px #00d8ff, 0 0 20px #00d8ff, 0 0 40px rgba(0,200,255,0.45); }
+      to   { text-shadow: 0 0 14px #cc44ff, 0 0 32px #cc44ff, 0 0 65px rgba(180,0,255,0.55); }
+    }
+
+    .wheel-section {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin: 10px 0;
+    }
+
+    .wheel-wrap {
+      position: relative;
+      width: min(380px, 88vw);
+      height: min(380px, 88vw);
+    }
+
+    .ring {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .ring-1 {
+      width: 104%; height: 104%;
+      border: 2px solid rgba(0, 200, 255, 0.25);
+      box-shadow: 0 0 22px rgba(0, 200, 255, 0.15), inset 0 0 22px rgba(0, 200, 255, 0.08);
+      animation: ringPulse 3.5s ease-in-out infinite;
+    }
+    .ring-2 {
+      width: 110%; height: 110%;
+      border: 1px solid rgba(180, 0, 255, 0.18);
+      box-shadow: 0 0 16px rgba(180, 0, 255, 0.1);
+      animation: ringPulse 3.5s ease-in-out infinite 1s;
+    }
+    @keyframes ringPulse {
+      0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+      50%       { opacity: 1;   transform: translate(-50%, -50%) scale(1.012); }
+    }
+
+    canvas {
+      border-radius: 50%;
+      display: block;
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 16px rgba(0, 200, 255, 0.35));
+    }
+
+    .pointer {
+      position: absolute;
+      top: -6px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 15;
+      width: 38px;
+      height: auto;
+      filter: drop-shadow(0 0 8px #00d8ff);
+      pointer-events: none;
+    }
+
+    .center-btn {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 78px; height: 78px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 33% 30%, #1a0a35, #060012);
+      border: 3px solid #00d8ff;
+      box-shadow:
+        0 0 16px #00d8ff, 0 0 36px rgba(0, 210, 255, 0.42),
+        0 0 64px rgba(0, 210, 255, 0.18), inset 0 0 14px rgba(0, 210, 255, 0.1);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      z-index: 25;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 19px; font-weight: 900;
+      color: #00d8ff;
+      letter-spacing: 2px;
+      text-shadow: 0 0 8px #00d8ff;
+      transition: all 0.18s;
+      user-select: none;
+    }
+    .center-btn:hover:not(:disabled) {
+      box-shadow:
+        0 0 26px #00d8ff, 0 0 56px rgba(0, 210, 255, 0.68),
+        0 0 90px rgba(0, 210, 255, 0.28), inset 0 0 22px rgba(0, 210, 255, 0.16);
+      transform: translate(-50%, -50%) scale(1.06);
+      color: #fff;
+    }
+    .center-btn:active:not(:disabled) {
+      transform: translate(-50%, -50%) scale(0.93);
+    }
+    .center-btn:disabled {
+      cursor: not-allowed;
+      border-color: #334;
+      color: #445;
+      text-shadow: none;
+      box-shadow: none;
+    }
+
+    .result-box {
+      width: min(480px, 94vw);
+      min-height: 82px;
+      border-radius: 14px;
+      background: rgba(8, 4, 24, 0.88);
+      border: 2px solid rgba(0, 200, 255, 0.25);
+      box-shadow:
+        0 0 18px rgba(0, 200, 255, 0.1),
+        inset 0 0 28px rgba(0, 0, 0, 0.6);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 16px 20px;
+      gap: 3px;
+      text-align: center;
+      position: relative;
+      overflow: visible;
+      flex-shrink: 0;
+    }
+    .result-box::before {
+      content: '';
+      position: absolute; inset: 0;
+      border-radius: 14px;
+      background: linear-gradient(135deg, transparent 40%, rgba(0,200,255,0.03) 58%, transparent 75%);
+      pointer-events: none;
+    }
+
+    .result-label {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 9px; font-weight: 700;
+      letter-spacing: 4px; text-transform: uppercase;
+      color: rgba(0, 200, 255, 0.48);
+      position: relative; z-index: 1;
+    }
+
+    .result-number {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(26px, 7vw, 44px);
+      font-weight: 900; color: #00d8ff;
+      text-shadow: 0 0 10px #00d8ff, 0 0 24px rgba(0,210,255,0.55), 0 0 48px rgba(0,210,255,0.28);
+      position: relative; z-index: 1; line-height: 1.1;
+    }
+
+    .result-text {
+      font-size: clamp(12px, 3.2vw, 16px);
+      font-weight: 700; color: #fff;
+      line-height: 1.52; position: relative; z-index: 1;
+      max-width: 100%;
+      word-break: break-word;
+    }
+    .result-box.idle .result-text { color: rgba(255,255,255,0.2); font-weight: 400; }
+
+    .footer {
+      font-size: 9px; color: rgba(0, 200, 255, 0.16);
+      letter-spacing: 3px; font-family: 'Orbitron', sans-serif;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="title">⚔️ 惩罚转盘 ⚔️</div>
+
+  <div class="wheel-section">
+    <div class="wheel-wrap">
+
+      <div class="ring ring-1"></div>
+      <div class="ring ring-2"></div>
+
+      <div class="pointer">
+        <svg viewBox="0 0 44 54" xmlns="http://www.w3.org/2000/svg" fill="none" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <linearGradient id="pg" x1="22" y1="0" x2="22" y2="54" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#cc44ff"/>
+              <stop offset="100%" stop-color="#00d8ff"/>
+            </linearGradient>
+            <filter id="pglow">
+              <feGaussianBlur stdDeviation="2.5" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <path d="M22 50 L8 13 Q8 1 22 1 Q36 1 36 13 Z" fill="#cc44ff" fill-opacity="0.22" filter="url(#pglow)"/>
+          <path d="M22 50 L8 13 Q8 1 22 1 Q36 1 36 13 Z" fill="url(#pg)" filter="url(#pglow)"/>
+          <path d="M22 43 L11 14 Q11 5 22 5 Q33 5 33 14 Z" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="1.2"/>
+          <circle cx="22" cy="3.5" r="2.2" fill="#fff" fill-opacity="0.75"/>
+        </svg>
+      </div>
+
+      <canvas id="wheel" width="800" height="800"></canvas>
+
+      <button class="center-btn" id="goBtn" onclick="startSpin()">GO</button>
+
+    </div>
+  </div>
+
+  <div class="result-box idle" id="resultBox">
+    <div class="result-label">PUNISHMENT</div>
+    <div class="result-number" id="resultNum">—</div>
+    <div class="result-text" id="resultText">点击中间的 GO 开始</div>
+  </div>
+
+  <div class="footer">PUNISHMENT WHEEL · 73</div>
+
+
+<script>
+/* ─── Punishments Data ─── */
+const PUNISHMENTS = [
+  "全程开镜（半场）",
+  "禁用准星（半场）",
+  "见敌人自转一圈再开枪（半场）",
+  "全局静步",
+  "左键绑定丢枪（半场）",
+  "不能使用技能（半场）",
+  "仅按S键走路（半场）",
+  "只能蹲着行进（半场）",
+  "射击预留退弹1颗子弹",
+  "禁止攻击敌人背身",
+  "仅允许跑打作战（半场）",
+  "仅限使用飞将枪械（半场）",
+  "对局内全程英文交流（半场）",
+  "固定指定样式准星（半场）",
+  "全程方言沟通（半场）",
+  "击杀一人后，喊话对方游戏名并模拟亲吻动作",
+  "仅靠AD键移动走路（半场）",
+  "空格键绑定开火按键（半场）",
+  "对局只能使用霰弹枪（半场）",
+  "主人契约：选定一人为主人，全程服从指令（无违规低俗内容）",
+  "WS移动键替换为AD键（半场）",
+  "现场爆照",
+  "真心话大冒险",
+  "对局仅可使用狙击枪（半场）",
+  "第二人格：每小局敌方可指定背刺一名队友，可挡路、挡子弹、报点、技能误伤队友",
+  "CPDD：双方内鬼身份暴露后，开启一日模拟恋爱相处，特殊情况可更换惩罚",
+  "爱情丘比特：绑定一名敌方玩家共生死，对方阵亡即刻自行淘汰",
+  "人设扮演：受到伤害开口说\"好爽\"",
+  "酒店服务生：防守方敌方攻入点位立刻停火，开口说欢迎光临",
+  "爱神附体：随机对两名在场玩家深情告白，单人时长不少于一分钟，禁止敷衍话术",
+  "整局全程撒娇语气说话",
+  "每小局切换一种动漫人设风格言行",
+  "牢大人格：每句话附带专属口头禅，阵亡后说曼巴out",
+  "仅能拾取敌我阵亡掉落枪械，禁止自身资金给队友发枪",
+  "仅限房间麦克风交流沟通",
+  "全程使用大佐口音发言",
+  "每小局间隔30秒以上，累计三次播报自身位置（半场）",
+  "老奴人设：全场玩家均可单次随意使唤，需无条件服从指令",
+  "开枪一次发出猫咪叫声",
+  "被敌方击杀后，夸赞对方：主人好枪",
+  "AD按键互换（累计十个人头为止）",
+  "鼠标开火键与开镜键互换（累计十个人头为止）",
+  "宝宝契约：选定队内战绩榜首或末尾玩家当作宝宝，全程提供情绪陪伴",
+  "听从对方队长指定枪械使用（半场）",
+  "每回合发出一种动物叫声",
+  "进攻方只能单人游走，不可抱团作战",
+  "全局全程霸总风格话术发言",
+  "装备匹配敌方最后一名玩家配置（半场）",
+  "单把枪械仅限击杀一人（半场）",
+  "现场演唱一首歌曲",
+  "每回合开局鼓励敌方末尾玩家",
+  "全程禁止静步移动（半场）",
+  "说话末尾统一添加\"了啦\"语气词",
+  "对局仅能使用机枪作战（半场）",
+  "每回合准备阶段哼唱歌曲",
+  "防守方禁止安放炸弹",
+  "自身阵亡后开口发表一句阵亡宣言",
+  "孽缘羁绊：与对位玩家刻意回避、互不碰面",
+  "天选倒霉蛋：惩罚力度翻倍",
+  "己方拿下残局胜利，开麦播放哼唱对局BGM",
+  "被敌方第一名点名，立刻下蹲应答",
+  "首位主动搭话的玩家，一同抽取惩罚项目",
+  "泼水玩法：禁止攻击敌人头部（半场）",
+  "好运加持：本次免除惩罚",
+  "说话全部使用叠词表达",
+  "跟屁虫玩法：半场全程跟随队内第一名行动",
+  "呆瓜人设：每句话均以哈哈哈开头",
+  "击杀敌人后开麦高调炫耀战绩",
+  "攻入点位开口说道：我回来啦",
+  "挑选一名队友代为抽取惩罚",
+  "惩罚反弹：发起投票人员接受惩罚",
+  "每回合主动和视野内首个敌人打招呼",
+  "开局罚站十秒，期间无法移动"
+];
+
+/* ─── Canvas Setup ─── */
+const canvas = document.getElementById('wheel');
+const ctx    = canvas.getContext('2d');
+const W = 800, H = 800, CX = W / 2, CY = H / 2, R = 380;
+const NUM     = 73;
+const SWEEP   = (2 * Math.PI) / NUM;
+
+// Extended neon palette (73 colors, cycling)
+const PALETTE = [
+  '#00d8ff','#cc44ff','#7b2fff','#00d8ff','#e040fb','#00d8ff','#651fff','#cc44ff',
+  '#00b8d4','#9c27b0','#00d8ff','#e040fb','#7c4dff','#00acc1','#d500f9','#0097a7',
+  '#ff4081','#00d8ff','#aa00ff','#00d8ff','#536dfe','#cc44ff','#18ffff','#d500f9',
+  '#00d8ff','#ff6d00','#651fff','#00d8ff','#e040fb','#0091ea','#00d8ff','#7b1fa2',
+  '#00d8ff','#ff1744','#cc44ff','#00d8ff','#651fff','#0097a7','#00d8ff','#e040fb',
+  '#00b8d4','#7c4dff','#00d8ff','#d500f9','#1e88e5','#cc44ff','#00d8ff','#aa00ff',
+  '#00d8ff','#536dfe','#e040fb','#00acc1','#7b2fff','#00d8ff','#ff6d00','#00d8ff',
+  '#ff9800','#e040fb','#00e676','#cc44ff','#00d8ff','#ff5722','#7c4dff','#00d8ff',
+  '#d500f9','#76ff03','#cc44ff','#00d8ff','#ff4081','#00d8ff','#536dfe','#00d8ff',
+  '#ffea00','#cc44ff','#00d8ff'
+];
+
+function drawWheel(rotation) {
+  ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  ctx.translate(CX, CY);
+  ctx.rotate(rotation);
+
+  for (let i = 0; i < NUM; i++) {
+    const start = i * SWEEP;
+    const end   = start + SWEEP;
+    const mid   = start + SWEEP / 2;
+    const c     = PALETTE[i % PALETTE.length];
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, R, start, end);
+    ctx.closePath();
+    ctx.fillStyle = c + 'cc';
+    ctx.fill();
+
+    ctx.strokeStyle = c;
+    ctx.lineWidth   = 1.5;
+    ctx.globalAlpha = 0.5;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    const dx = R * Math.cos(start);
+    const dy = R * Math.sin(start);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(dx, dy);
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+  }
+
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, 2*Math.PI);
+  ctx.strokeStyle = 'rgba(0,216,255,0.35)';
+  ctx.lineWidth = 3;
+  ctx.shadowColor = '#00d8ff'; ctx.shadowBlur = 15;
+  ctx.stroke(); ctx.shadowBlur = 0;
+
+  ctx.beginPath(); ctx.arc(0, 0, 68, 0, 2*Math.PI);
+  ctx.fillStyle = '#08080f';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,216,255,0.3)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  for (let a = 0; a < 8; a++) {
+    const ang = (a / 8) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.arc(42 * Math.cos(ang), 42 * Math.sin(ang), 2.5, 0, 2*Math.PI);
+    ctx.fillStyle = 'rgba(0,216,255,0.3)';
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+/* ─── Spin Logic ─── */
+let curRot   = 0;
+let spinning = false;
+
+function startSpin() {
+  if (spinning) return;
+  spinning = true;
+
+  const btn   = document.getElementById('goBtn');
+  const box   = document.getElementById('resultBox');
+  const numEl = document.getElementById('resultNum');
+  const txtEl = document.getElementById('resultText');
+
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  box.classList.remove('idle');
+  numEl.textContent = '—';
+  txtEl.textContent = '正在转动...';
+
+  const target = Math.floor(Math.random() * NUM);
+  const targetMid   = (target + 0.5) * SWEEP;
+  const targetAngle = -(Math.PI / 2) - targetMid;
+  const spins       = 6 + Math.random() * 3;
+  const finalRot    = spins * (2 * Math.PI) + targetAngle;
+
+  const duration = 5000 + Math.random() * 1000;
+  const t0 = performance.now();
+
+  function ease(t) { return 1 - Math.pow(1 - t, 3); }
+
+  function step(now) {
+    const elapsed = now - t0;
+    const p      = Math.min(elapsed / duration, 1);
+    const e      = ease(p);
+    curRot = e * finalRot;
+    drawWheel(curRot);
+    if (p < 1) {
+      requestAnimationFrame(step);
+    } else {
+      curRot = finalRot;
+      drawWheel(curRot);
+      spinning = false;
+      btn.disabled = false;
+      btn.textContent = 'GO';
+      showResult(target);
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+function showResult(idx) {
+  const numEl = document.getElementById('resultNum');
+  const txtEl = document.getElementById('resultText');
+  numEl.textContent = idx + 1;
+  txtEl.textContent = PUNISHMENTS[idx];
+}
+
+/* ─── Init ─── */
+document.fonts.ready.then(() => drawWheel(0));
+</script>
+</body>
+</html>
